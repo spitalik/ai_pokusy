@@ -1,0 +1,55 @@
+:root{
+  --bg:#f7f7f8;
+  --primary:#0b74de;
+  --primary-dark:#053f71;
+  --primary-light:#eaf5ff;
+  --muted:#6b6b6b;
+  --max-width:1100px;
+  --radius:8px;
+}
+*{box-sizing:border-box}
+body{font-family:Inter, system-ui, Arial, sans-serif;margin:0;background:var(--bg);color:#222}
+.container{max-width:var(--max-width);margin:0 auto;padding:1rem}
+.site-header{background:#fff;border-bottom:1px solid #e6e6e6}
+.site-header .container{display:flex;align-items:center;justify-content:space-between}
+.logo img{height:44px}
+.main-nav a{margin-left:1rem;color:#222;text-decoration:none}
+.hero{padding:2rem 0;background:linear-gradient(to bottom,var(--primary-dark),var(--primary-light));overflow:hidden}
+.hero .container{position:relative;color:#fff}
+.hero-img{display:none}
+.hero h1{margin:0 0 .5rem;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.45)}
+.hero p{color:rgba(255,255,255,0.9);text-shadow:0 1px 3px rgba(0,0,0,0.35)}
+
+.hero .cta{background:#fff;color:var(--primary-dark);padding:.6rem 1rem;border-radius:6px;text-decoration:none;display:inline-block}
+.cta{display:inline-block;padding:.6rem 1rem;background:var(--primary);color:#fff;border-radius:6px;text-decoration:none}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;padding:2rem 0}
+.partners{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.partners img{max-height:60px;max-width:160px;object-fit:contain;background:transparent;padding:6px}
+.features article{background:#fff;padding:1rem;border-radius:var(--radius);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.site-footer{padding:1rem 0;margin-top:2rem;color:var(--muted)}
+
+.contact-form{display:grid;gap:.6rem;max-width:600px}
+.contact-form label{display:block}
+.contact-form input,.contact-form textarea{width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px}
+.contact-form button{background:var(--primary);color:#fff;border:none;padding:.6rem 1rem;border-radius:6px;cursor:pointer}
+.form-message{margin-top:.5rem;color:green}
+
+@media(max-width:600px){
+  .main-nav{display:none}
+  .site-header .container{padding:.5rem}
+}
+
+@media(max-width:900px){
+  .hero-img{max-height:320px}
+  .partners img{max-height:48px}
+}
+
+@media(max-width:480px){
+  .hero{padding:1rem 0}
+  .hero-img{max-height:200px;border-radius:6px}
+  .partners img{max-height:36px}
+}
+
+/* Responsive map container */
+.map-container{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;margin:1rem 0}
+.map-container iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
