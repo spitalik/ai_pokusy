@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piškvorky</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#fff;color:#111;font-family:monospace;display:flex;justify-content:center}
+  @media(prefers-color-scheme:dark){body{background:#1a1a1a;color:#eee}}
+  #app{display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;gap:1rem}
+  #status{font-size:13px;color:#888;letter-spacing:0.05em;text-transform:uppercase;height:20px}
+  canvas{cursor:pointer;border:0.5px solid #ddd;border-radius:8px}
+  @media(prefers-color-scheme:dark){canvas{border-color:#333}}
+  #controls{display:flex;gap:8px}
+  button{font-family:monospace;font-size:12px;padding:6px 16px;border:0.5px solid #ccc;border-radius:8px;background:#fff;color:#111;cursor:pointer}
+  button:hover{background:#f5f5f5}
+  @media(prefers-color-scheme:dark){button{background:#2a2a2a;color:#eee;border-color:#444} button:hover{background:#333}}
+  #score{display:flex;gap:16px;align-items:center}
+  .sc{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .sc .lbl{font-size:10px;letter-spacing:0.08em;color:#aaa}
+  .sc .val{font-size:18px;font-weight:700}
+  #mode-toggle{display:flex;gap:4px}
+  .mtbtn{padding:4px 10px;font-size:11px;font-family:monospace;border:0.5px solid #ccc;border-radius:8px;background:transparent;color:#888;cursor:pointer}
+  .mtbtn.active{background:#f0f0f0;color:#111;border-color:#999}
+  @media(prefers-color-scheme:dark){.mtbtn{border-color:#444;color:#888}.mtbtn.active{background:#333;color:#eee;border-color:#666}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mode-toggle">
+    <button class="mtbtn active" id="pvp-btn" onclick="setMode('pvp')">2 hráči</button>
+    <button class="mtbtn" id="ai-btn" onclick="setMode('ai')">vs AI</button>
+  </div>
+  <div id="score">
+    <div class="sc"><span class="lbl">X (hráč 1)</span><span class="val" id="sx" style="color:#D85A30">0</span></div>
+    <div class="sc"><span class="lbl">&nbsp;</span><span style="font-size:14px;color:#aaa">:</span></div>
+    <div class="sc"><span class="lbl" id="o-label">O (hráč 2)</span><span class="val" id="so" style="color:#1D9E75">0</span></div>
+  </div>
+  <div id="status">Ťah: X</div>
+  <canvas id="c"></canvas>
+  <div id="controls">
+    <button onclick="resetGame()">Nová hra</button>
+    <button onclick="resetScore()">Reset skóre</button>
+  </div>
+</div>
+<script>
+const N=15,WIN=5;
+const SIZE=Math.min(450,Math.floor(window.innerWidth*0.94));
+const CELL=Math.floor(SIZE/N);
+let board=[],cur='X',over=false,scores={X:0,O:0},mode='pvp',winCells=[];
+
+const canvas=document.getElementById('c');
+canvas.width=canvas.height=CELL*N;
+const ctx=canvas.getContext('2d');
+
+const isDark=()=>window.matchMedia('(prefers-color-scheme:dark)').matches;
+
+function colors(){
+  return isDark()
+    ?{bg:'#1e1e1e',line:'#333',x:'#e8734a',o:'#2ecc9a',win:'#2d2d2d'}
+    :{bg:'#fff',line:'#e0e0e0',x:'#D85A30',o:'#1D9E75',win:'#f0f0f0'};
+}
+
+function draw(){
+  const C=colors();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle=C.bg;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const x=c*CELL,y=r*CELL,i=r*N+c;
+      if(winCells.includes(i)){ctx.fillStyle=C.win;ctx.fillRect(x,y,CELL,CELL);}
+      ctx.strokeStyle=C.line;ctx.lineWidth=0.5;
+      ctx.strokeRect(x+0.5,y+0.5,CELL-1,CELL-1);
+      const v=board[i];
+      if(v){
+        ctx.fillStyle=v==='X'?C.x:C.o;
+        ctx.font=`bold ${Math.floor(CELL*0.55)}px monospace`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(v,x+CELL/2,y+CELL/2);
+      }
+    }
+  }
+}
+
+function getCell(e){
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width,scaleY=canvas.height/rect.height;
+  const cx=(e.clientX-rect.left)*scaleX,cy=(e.clientY-rect.top)*scaleY;
+  const c=Math.floor(cx/CELL),r=Math.floor(cy/CELL);
+  if(r<0||r>=N||c<0||c>=N)return -1;
+  return r*N+c;
+}
+
+canvas.onclick=e=>{const i=getCell(e);if(i>=0)play(i);};
+
+function play(i){
+  if(over||i<0||board[i])return;
+  board[i]=cur;
+  const w=checkWin(board,i,cur);
+  if(w){winCells=w;draw();endGame(cur);return;}
+  if(board.every(x=>x)){draw();document.getElementById('status').textContent='Remíza!';over=true;return;}
+  cur=cur==='X'?'O':'X';
+  document.getElementById('status').textContent='Ťah: '+cur;
+  draw();
+  if(mode==='ai'&&cur==='O'&&!over)setTimeout(aiMove,250);
+}
+
+function checkWin(b,idx,p){
+  const r=Math.floor(idx/N),c=idx%N;
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for(const [dr,dc] of dirs){
+    let cells=[idx];
+    for(let s=1;s<WIN;s++){const nr=r+dr*s,nc=c+dc*s;if(nr<0||nr>=N||nc<0||nc>=N||b[nr*N+nc]!==p)break;cells.push(nr*N+nc);}
+    for(let s=1;s<WIN;s++){const nr=r-dr*s,nc=c-dc*s;if(nr<0||nr>=N||nc<0||nc>=N||b[nr*N+nc]!==p)break;cells.push(nr*N+nc);}
+    if(cells.length>=WIN)return cells;
+  }
+  return null;
+}
+
+function endGame(p){
+  over=true;scores[p]++;
+  document.getElementById('s'+p.toLowerCase()).textContent=scores[p];
+  document.getElementById('status').textContent='Vyhral: '+p+'!';
+}
+
+function scoreBoard(b,p){
+  let s=0;
+  for(let i=0;i<N*N;i++){
+    if(!b[i])continue;
+    const r=Math.floor(i/N),c=i%N;
+    const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+    for(const [dr,dc] of dirs){
+      let cnt=1,open=0,blocked=0;
+      for(let s2=1;s2<WIN;s2++){const nr=r+dr*s2,nc=c+dc*s2;if(nr<0||nr>=N||nc<0||nc>=N){blocked++;break;}if(b[nr*N+nc]===b[i])cnt++;else if(!b[nr*N+nc]){open++;break;}else{blocked++;break;}}
+      for(let s2=1;s2<WIN;s2++){const nr=r-dr*s2,nc=c-dc*s2;if(nr<0||nr>=N||nc<0||nc>=N){blocked++;break;}if(b[nr*N+nc]===b[i])cnt++;else if(!b[nr*N+nc]){open++;break;}else{blocked++;break;}}
+      if(cnt>=WIN){s+=b[i]===p?1e8:-1e8;}
+      else if(cnt===4&&open>0){s+=b[i]===p?1e5:-1e5;}
+      else if(cnt===3&&open>1){s+=b[i]===p?1e3:-1e3;}
+      else if(cnt===2&&open>1){s+=b[i]===p?10:-10;}
+    }
+  }
+  return s;
+}
+
+function aiMove(){
+  if(over)return;
+  let best=-Infinity,bestI=-1;
+  const cands=getCandidates(board);
+  for(const i of cands){
+    board[i]='O';let s=scoreBoard(board,'O');
+    board[i]='X';let s2=scoreBoard(board,'O');
+    board[i]='';
+    const f=s-s2;if(f>best){best=f;bestI=i;}
+  }
+  if(bestI<0)for(let i=0;i<N*N;i++){if(!board[i]){bestI=i;break;}}
+  play(bestI);
+}
+
+function getCandidates(b){
+  const set=new Set();
+  for(let i=0;i<N*N;i++){
+    if(!b[i])continue;
+    const r=Math.floor(i/N),c=i%N;
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<N&&nc>=0&&nc<N&&!b[nr*N+nc])set.add(nr*N+nc);
+    }
+  }
+  if(!set.size){const mid=Math.floor(N/2);set.add(mid*N+mid);}
+  return [...set];
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('pvp-btn').className='mtbtn'+(m==='pvp'?' active':'');
+  document.getElementById('ai-btn').className='mtbtn'+(m==='ai'?' active':'');
+  document.getElementById('o-label').textContent=m==='ai'?'O (AI)':'O (hráč 2)';
+  resetGame();
+}
+
+function resetGame(){board=Array(N*N).fill('');cur='X';over=false;winCells=[];draw();document.getElementById('status').textContent='Ťah: X';}
+function resetScore(){scores={X:0,O:0};document.getElementById('sx').textContent=0;document.getElementById('so').textContent=0;resetGame();}
+
+resetGame();
+</script>
+</body>
+</html>
